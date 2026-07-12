@@ -28,13 +28,23 @@ LABELS = {
         r"^order\s*(?:no\.?|number|id)\b",
         r"^transaction\s*(?:no\.?|number|id)\b",
         r"^txn\.?\s*(?:no\.?|id)\b",
+        r"^control\s*(?:no\.?|number)\b",
+        r"^serial\s*(?:no\.?|number)\b",
+        r"^sl\.?\s*no\.?\b",
     ],
     "date": [
         r"^invoice\s*date\b",
+        r"^invoice\s*dt\.?\b",
         r"^billed\s*on\b",
+        r"^bill\s*date\b",
         r"^issued\s*(?:on)?\b",
+        r"^issue\s*date\b",
         r"^dated\b",
+        r"^transaction\s*date\b",
         r"^date\b",
+    ],
+    "date_fallback": [
+        r"^value\s*date\b",
     ],
     "vendor": [
         r"^vendor\s*(?:name)?\b",
@@ -42,26 +52,53 @@ LABELS = {
         r"^supplier\s*(?:name)?\b",
         r"^bill(?:ed)?\s*from\b",
         r"^company\s*(?:name)?\b",
+        r"^issued\s*by\b",
+        r"^billed\s*by\b",
+        r"^provider\b",
+        r"^merchant\s*(?:name)?\b",
         r"^from\b",
     ],
     "amount": [
         r"^sub\s*-?\s*total\b",
         r"^net\s*amount\b",
         r"^amount\s*\(before\s*tax\)\b",
+        r"^amount\s*\(excl(?:uding|\.)?\s*tax\)\b",
+        r"^amount\s*\(without\s*tax\)\b",
+        r"^taxable\s*(?:value|amount)\b",
+        r"^basic\s*(?:value|amount)\b",
+        r"^base\s*(?:value|amount)\b",
+        r"^gross\s*amount\b",
+        r"^price\b",
+        r"^cost\b",
+        r"^value\b(?!\s*date)",
+        r"^charges?\b",
         r"^amount\b",
     ],
     "tax": [
         r"^\w{0,3}gst\s*\([\d.]+%\)",
+        r"^\w{0,3}gst\s*@\s*[\d.]+%",
         r"^\w{0,3}gst\b",
         r"^vat\s*\([\d.]+%\)",
+        r"^vat\s*@\s*[\d.]+%",
         r"^vat\b",
         r"^service\s*tax\b",
+        r"^sales\s*tax\b",
+        r"^output\s*tax\b",
+        r"^tax\s*amount\b",
         r"^tax\s*\([\d.]+%\)",
+        r"^tax\s*@\s*[\d.]+%",
+        r"^duty\b",
+        r"^cess\b",
         r"^tax\b",
     ],
     "total": [
         r"^grand\s*total\b",
         r"^total\s*due\b",
+        r"^total\s*payable\b",
+        r"^amount\s*due\b",
+        r"^amount\s*payable\b",
+        r"^net\s*payable\b",
+        r"^balance\s*due\b",
         r"^total\b",
     ],
 }
@@ -86,11 +123,11 @@ _SEPARATOR_RE = re.compile(r"^[\s.:\-]+")
 NUMBER_RE = re.compile(r"[-+]?\d[\d,]*\.?\d*")
 
 CURRENCY_MARKERS = [
-    (r"₹|Rs\.?|INR", "INR"),
-    (r"\$|USD", "USD"),
-    (r"€|EUR", "EUR"),
-    (r"£|GBP", "GBP"),
-    (r"¥|JPY", "JPY"),
+    (r"₹|\bRs\.?(?=\s|\d|$)|\bINR\b", "INR"),
+    (r"\$|\bUSD\b", "USD"),
+    (r"€|\bEUR\b", "EUR"),
+    (r"£|\bGBP\b", "GBP"),
+    (r"¥|\bJPY\b", "JPY"),
 ]
 
 # Fallback pattern for invoice-number-like codes when no explicit label matches:
@@ -114,6 +151,28 @@ def _find_value_for_line(text: str, patterns: list) -> str | None:
                 remainder = _SEPARATOR_RE.sub("", remainder).strip()
                 if remainder:
                     return remainder
+    return None
+
+
+def _find_numeric_value_for_line(text: str, patterns: list) -> float | None:
+    """Like _find_value_for_line, but for numeric fields (amount/tax/total).
+    Skips a matched label line if no actual number follows it (e.g. a false
+    positive like 'Cost Center: Engineering' or 'Value Date: ...'), and keeps
+    searching later lines/patterns instead of giving up."""
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        for pattern in patterns:
+            m = re.match(pattern, stripped, flags=re.IGNORECASE)
+            if m:
+                remainder = stripped[m.end():]
+                remainder = _SEPARATOR_RE.sub("", remainder).strip()
+                if remainder:
+                    number = _extract_number(remainder)
+                    if number is not None:
+                        return number
+                    # No usable number on this line — keep searching other lines/patterns.
     return None
 
 
@@ -205,16 +264,14 @@ def _extract_vendor(invoice_text: str) -> str | None:
 
 def extract_invoice_fields(invoice_text: str) -> dict:
     invoice_no = _extract_invoice_no(invoice_text)
-    date_raw = _find_value_for_line(invoice_text, LABELS["date"])
+    date_raw = _find_value_for_line(invoice_text, LABELS["date"]) or \
+        _find_value_for_line(invoice_text, LABELS["date_fallback"])
     vendor = _extract_vendor(invoice_text)
-    amount_raw = _find_value_for_line(invoice_text, LABELS["amount"])
-    tax_raw = _find_value_for_line(invoice_text, LABELS["tax"])
-    total_raw = _find_value_for_line(invoice_text, LABELS["total"])
+    amount = _find_numeric_value_for_line(invoice_text, LABELS["amount"])
+    tax = _find_numeric_value_for_line(invoice_text, LABELS["tax"])
+    total = _find_numeric_value_for_line(invoice_text, LABELS["total"])
 
     date = _normalize_date(date_raw)
-    amount = _extract_number(amount_raw)
-    tax = _extract_number(tax_raw)
-    total = _extract_number(total_raw)
 
     # Fallback: derive amount (subtotal before tax) from total - tax if amount missing.
     if amount is None and total is not None and tax is not None:
