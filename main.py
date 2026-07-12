@@ -148,7 +148,11 @@ class DynamicExtractRequest(BaseModel):
     text: str
     schema_: dict[str, str] = Field(alias="schema")
 
-
+class InvoiceSchemaRequest(BaseModel):
+    document_id: str
+    text: str
+    schema: dict
+    
 @app.post("/dynamic-extract")
 def dynamic_extract_endpoint(payload: DynamicExtractRequest):
     try:
