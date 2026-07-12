@@ -37,7 +37,7 @@ app.add_middleware(
 
 AIPIPE_TOKEN = os.environ.get("AIPIPE_TOKEN", "")
 AIPIPE_CHAT_URL = "https://aipipe.org/openai/v1/chat/completions"
-MODEL = "gpt-4o-mini"  # vision-capable model available through AIPipe
+MODEL = "gpt-4o"  # vision-capable model available through AIPipe
 
 
 class AnswerImageRequest(BaseModel):
