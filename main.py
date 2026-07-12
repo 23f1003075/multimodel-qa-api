@@ -5,6 +5,9 @@ POST /answer-image
 Request:  {"image_base64": "<base64 string>", "question": "What is the total?"}
 Response: {"answer": "4089.35"}
 
+Uses your course-provided AIPipe token (OpenAI-compatible proxy) with a
+vision-capable model to read the image and answer the question.
+
 Requires the environment variable AIPIPE_TOKEN to be set on the host
 (Render / Fly.io / HuggingFace Spaces all let you set env vars in their dashboard).
 """
@@ -19,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from invoice_extract import extract_invoice_fields
+from dynamic_extract import dynamic_extract as run_dynamic_extract
 
 app = FastAPI(title="Multimodal QA API (AIPipe)")
 
@@ -132,6 +136,28 @@ class ExtractResponse(BaseModel):
 def extract(payload: ExtractRequest):
     fields = extract_invoice_fields(payload.invoice_text)
     return ExtractResponse(**fields)
+
+
+from typing import Any
+from pydantic import Field, ConfigDict
+
+
+class DynamicExtractRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    text: str
+    schema_: dict[str, str] = Field(alias="schema")
+
+
+@app.post("/dynamic-extract")
+def dynamic_extract_endpoint(payload: DynamicExtractRequest):
+    try:
+        result = run_dynamic_extract(payload.text, payload.schema_)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
+    return result
 
 
 @app.get("/")
