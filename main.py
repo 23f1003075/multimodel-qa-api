@@ -5,7 +5,6 @@ POST /answer-image
 Request:  {"image_base64": "<base64 string>", "question": "What is the total?"}
 Response: {"answer": "4089.35"}
 
-
 Requires the environment variable AIPIPE_TOKEN to be set on the host
 (Render / Fly.io / HuggingFace Spaces all let you set env vars in their dashboard).
 """
@@ -18,6 +17,8 @@ import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+
+from invoice_extract import extract_invoice_fields
 
 app = FastAPI(title="Multimodal QA API (AIPipe)")
 
@@ -112,6 +113,25 @@ def answer_image(payload: AnswerImageRequest):
         raise HTTPException(status_code=502, detail=f"Model call failed: {e}")
 
     return AnswerImageResponse(answer=answer_text)
+
+
+class ExtractRequest(BaseModel):
+    invoice_text: str
+
+
+class ExtractResponse(BaseModel):
+    invoice_no: str | None
+    date: str | None
+    vendor: str | None
+    amount: float | None
+    tax: float | None
+    currency: str | None
+
+
+@app.post("/extract", response_model=ExtractResponse)
+def extract(payload: ExtractRequest):
+    fields = extract_invoice_fields(payload.invoice_text)
+    return ExtractResponse(**fields)
 
 
 @app.get("/")
