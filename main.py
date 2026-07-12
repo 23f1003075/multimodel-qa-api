@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from invoice_extract import extract_invoice_fields
 from dynamic_extract import dynamic_extract as run_dynamic_extract
+from invoice_schema_extract import extract_invoice
 
 app = FastAPI(title="Multimodal QA API (AIPipe)")
 
@@ -148,10 +149,6 @@ class DynamicExtractRequest(BaseModel):
     text: str
     schema_: dict[str, str] = Field(alias="schema")
 
-class InvoiceSchemaRequest(BaseModel):
-    document_id: str
-    text: str
-    schema: dict
     
 @app.post("/dynamic-extract")
 def dynamic_extract_endpoint(payload: DynamicExtractRequest):
@@ -163,17 +160,21 @@ def dynamic_extract_endpoint(payload: DynamicExtractRequest):
         raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
     return result
     
+class InvoiceSchemaRequest(BaseModel):
+    document_id: str
+    text: str
+    schema: dict
+
+
 @app.post("/extract-invoice")
-def extract_invoice_schema(payload: InvoiceSchemaRequest):
+def extract_invoice_endpoint(payload: InvoiceSchemaRequest):
     try:
-        result = run_dynamic_extract(payload.text, payload.schema)
+        return extract_invoice(payload.text, payload.schema)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
-
-    return result
-
+        
 @app.get("/")
 def health_check():
     return {"status": "ok"}
