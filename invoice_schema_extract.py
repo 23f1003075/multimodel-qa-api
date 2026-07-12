@@ -65,13 +65,14 @@ Return ONLY the JSON object.
     response.raise_for_status()
 
     result = response.json()["choices"][0]["message"]["content"].strip()
+
     try:
-    return json.loads(result)
+        return json.loads(result)
     except json.JSONDecodeError:
         start = result.find("{")
         end = result.rfind("}")
 
-    if start != -1 and end != -1:
-        return json.loads(result[start:end + 1])
+        if start != -1 and end != -1:
+            return json.loads(result[start:end + 1])
 
-    raise
+        raise
