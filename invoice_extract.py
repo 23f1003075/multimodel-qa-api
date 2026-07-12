@@ -120,13 +120,16 @@ def _find_value_for_line(text: str, patterns: list) -> str | None:
 def _extract_number(value_str: str) -> float | None:
     if value_str is None:
         return None
-    m = NUMBER_RE.search(value_str)
-    if not m:
-        return None
-    try:
-        return float(m.group(0).replace(",", ""))
-    except ValueError:
-        return None
+    for m in NUMBER_RE.finditer(value_str):
+        # Skip figures that are actually percentages (e.g. the "18" in "@ 18%: Rs. 31,500.00")
+        following = value_str[m.end():m.end() + 2].strip()
+        if following.startswith("%"):
+            continue
+        try:
+            return float(m.group(0).replace(",", ""))
+        except ValueError:
+            continue
+    return None
 
 
 _ISO_DATE_RE = re.compile(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b")
