@@ -65,8 +65,7 @@ Return ONLY the JSON object.
     response.raise_for_status()
 
     result = response.json()["choices"][0]["message"]["content"].strip()
-
-try:
+    try:
     return json.loads(result)
 except json.JSONDecodeError:
     start = result.find("{")
