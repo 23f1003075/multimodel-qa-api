@@ -25,6 +25,7 @@ from typing import List
 from invoice_extract import extract_invoice_fields
 from dynamic_extract import dynamic_extract as run_dynamic_extract
 from invoice_schema_extract import extract_invoice
+from semantic_search import rank
 
 app = FastAPI(title="Multimodal QA API (AIPipe)")
 
@@ -175,6 +176,24 @@ def extract_invoice_endpoint(payload: InvoiceSchemaRequest):
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
+
+class SemanticSearchRequest(BaseModel):
+    query_id: str
+    query: str
+    candidates: List[str]
+
+
+class SemanticSearchResponse(BaseModel):
+    ranking: List[int]
+
+
+@app.post("/semantic-search", response_model=SemanticSearchResponse)
+def semantic_search(payload: SemanticSearchRequest):
+    try:
+        result = rank(payload.query, payload.candidates)
+        return SemanticSearchResponse(ranking=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
         
 @app.get("/")
 def health_check():
