@@ -112,7 +112,18 @@ def answer_image(payload: AnswerImageRequest):
         r = requests.post(AIPIPE_CHAT_URL, headers=headers, json=body, timeout=60)
         r.raise_for_status()
         data = r.json()
-        answer_text = data["choices"][0]["message"]["content"].strip()
+        answer_text = data["choices"][0]["message"]["content"]
+
+answer_text = (
+    answer_text.strip()
+    .replace(",", "")
+    .replace("₹", "")
+    .replace("Rs.", "")
+    .replace("Rs", "")
+    .replace("$", "")
+    .replace("**", "")
+    .replace("`", "")
+)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Model call failed: {e}")
 
