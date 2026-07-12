@@ -29,6 +29,12 @@ Rules:
 - line_items: preserve order exactly.
 - item_count: number of line_items.
 
+Each object inside line_items MUST contain exactly these keys:
+- sku
+- quantity
+- unit_price
+
+Do not use SKU, Qty, Quantity, Unit Price, Price or any other variation.
 Return ONLY JSON.
 No markdown.
 No explanation.
