@@ -20,6 +20,7 @@ import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List
 
 from invoice_extract import extract_invoice_fields
 from dynamic_extract import dynamic_extract as run_dynamic_extract
