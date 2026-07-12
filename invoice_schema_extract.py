@@ -14,19 +14,27 @@ def extract_invoice(text: str, schema: dict):
     system_prompt = """
 You are an expert invoice extraction engine.
 
-You will receive:
-1. Invoice text.
-2. A JSON Schema describing the exact output.
-
-Return ONLY valid JSON that exactly matches the provided schema.
+Return ONLY valid JSON matching the provided schema.
 
 Rules:
-- No markdown.
-- No explanation.
-- No extra keys.
-- No missing keys.
-- Use null when information cannot be determined.
-- Respect every type in the schema.
+
+- vendor: copy exactly as written.
+- currency: convert symbols or names into ISO 4217 code (USD, EUR, GBP, INR, JPY).
+- total_amount: integer only, no commas or symbols.
+- invoice_date: ALWAYS YYYY-MM-DD.
+- due_in_days: integer.
+- is_paid: boolean true/false.
+- priority: one of low, normal, high, urgent (lowercase only).
+- contact_email: lowercase.
+- line_items: preserve order exactly.
+- item_count: number of line_items.
+
+Return ONLY JSON.
+No markdown.
+No explanation.
+No extra keys.
+No missing keys.
+Use null if a value cannot be extracted.
 """
 
     user_prompt = f"""
