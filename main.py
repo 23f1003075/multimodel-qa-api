@@ -162,7 +162,17 @@ def dynamic_extract_endpoint(payload: DynamicExtractRequest):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
     return result
+    
+@app.post("/extract-invoice")
+def extract_invoice_schema(payload: InvoiceSchemaRequest):
+    try:
+        result = run_dynamic_extract(payload.text, payload.schema)
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Extraction failed: {e}")
 
+    return result
 
 @app.get("/")
 def health_check():
