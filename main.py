@@ -26,6 +26,7 @@ from invoice_extract import extract_invoice_fields
 from dynamic_extract import dynamic_extract as run_dynamic_extract
 from invoice_schema_extract import extract_invoice
 from semantic_search import rank
+from math_solver import solve_problem
 
 app = FastAPI(title="Multimodal QA API (AIPipe)")
 
@@ -194,7 +195,30 @@ def semantic_search(payload: SemanticSearchRequest):
         return SemanticSearchResponse(ranking=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-        
+
+class MathProblemRequest(BaseModel):
+    problem_id: str
+    problem: str
+
+
+class MathProblemResponse(BaseModel):
+    reasoning: str
+    answer: int
+
+
+@app.post("/solve-math", response_model=MathProblemResponse)
+def solve_math(payload: MathProblemRequest):
+    try:
+        result = solve_problem(payload.problem)
+
+        return MathProblemResponse(
+            reasoning=result["reasoning"],
+            answer=int(result["answer"])
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/")
 def health_check():
     return {"status": "ok"}
